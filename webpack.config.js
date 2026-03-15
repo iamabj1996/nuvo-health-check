@@ -42,7 +42,7 @@ module.exports = {
     proxy: [
       {
         context: ["/api"],
-        target: "https://ven04351.service-now.com/",
+        target: "https://nuvolodev.service-now.com/",
         secure: false,
         changeOrigin: true,
       },

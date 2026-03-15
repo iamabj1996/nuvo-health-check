@@ -9,7 +9,7 @@ axios.defaults.headers.put["Content-Type"] = "application/json";
 
 if (process.env.NODE_ENV === "development") {
   const username = "react.app@nuvolo.com";
-  const password = "A7g-:VULTi1B2o5s2A@FV!w)3FTZf";
+  const password = "ckr.*%BAJ]+Bwzg^wVka0rGfk)uS)x%8x64$oqH)";
   axios.defaults.auth = {
     username,
     password,

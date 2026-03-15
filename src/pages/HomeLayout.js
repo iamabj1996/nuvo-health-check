@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import Joyride from "react-joyride";
 import {
   FiLayers,
   FiCheckCircle,
@@ -34,13 +35,11 @@ const HomeLayout = () => {
   const [detailedHealthCheckLogs, setDetailedHealthCheckLogs] = useState([]);
   const [differencesData, setDifferencesData] = useState([]);
   const [detailedUpgradeConflictLogs, setDetailedUpgradeConflicLogs] = useState(
-    []
+    [],
   );
+  const [stepIndex, setStepIndex] = useState(0);
+  const [runTour, setRunTour] = useState(false);
   const [clientInstanceName, setClientInstanceName] = useState("");
-
-  console.log("activeTab", activeTab);
-
-  console.log("clientData for config check", clientData);
 
   const toggleDarkMode = () => {
     setIsDarkMode((prev) => !prev);
@@ -57,8 +56,6 @@ const HomeLayout = () => {
       icon: FiGitPullRequest,
     },
   ];
-
-  console.log("detailedHealthCheckLogs", detailedHealthCheckLogs[0]);
 
   const parsedData = useMemo(() => {
     if (detailedHealthCheckLogs && detailedHealthCheckLogs.length > 0) {
@@ -84,7 +81,13 @@ const HomeLayout = () => {
     return [];
   }, [detailedHealthCheckLogs]);
 
-  console.log("parsedData", parsedData[0]?.Modified[0]?.table_name);
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem("hasSeenTour");
+
+    if (!hasSeenTour) {
+      setRunTour(true);
+    }
+  }, []);
 
   useEffect(() => {
     const path = window.location.hash.replace("#/", "");
@@ -108,7 +111,7 @@ const HomeLayout = () => {
     const getClientData = async () => {
       try {
         const response = await axios.get(
-          "/api/now/table/x_nuvo_health_scan_client_healthcheck_config?sysparm_fields=name%2Csys_id%2Cclient_instance&sysparm_limit=1000"
+          "/api/now/table/x_nuvo_health_scan_client_healthcheck_config?sysparm_fields=name%2Csys_id%2Cclient_instance&sysparm_limit=1000",
         );
         return response?.data?.result || [];
       } catch (error) {
@@ -128,7 +131,6 @@ const HomeLayout = () => {
   }, []);
 
   const formatApplications = (applicationData) => {
-    console.log("function applicationData", applicationData);
     if (applicationData.length === 0) {
       return [];
     }
@@ -151,7 +153,6 @@ const HomeLayout = () => {
 
     const getApplicationData = async () => {
       try {
-        console.log("Fetching application data...");
         const query =
           "client_healthcheck_config=" +
           clientConfigId +
@@ -166,10 +167,9 @@ const HomeLayout = () => {
               sysparm_fields: "applications",
               sysparm_limit: 1,
             },
-          }
+          },
         );
 
-        console.log("Response:", response?.data?.result[0]);
         return response?.data?.result[0] || [];
       } catch (error) {
         console.error("Error fetching application data:", error);
@@ -179,22 +179,14 @@ const HomeLayout = () => {
 
     const fetchApplicationData = async () => {
       const applicationReturnedData = await getApplicationData();
-      console.log("applicationsReturnedData1", applicationReturnedData);
 
-      console.log(
-        "applicationsReturnedData",
-        formatApplications(applicationReturnedData)
-      );
       if (applicationReturnedData) {
         const applicationsArray = formatApplications(applicationReturnedData);
-        console.log("applicationsArray", applicationsArray);
         setApplicationData(applicationsArray);
       }
     };
 
     fetchApplicationData();
-
-    console.log("applicationData1234", applicationData);
   }, [selectedClient, clientConfigId]);
 
   // Fetch start date data
@@ -221,7 +213,7 @@ const HomeLayout = () => {
               sysparm_fields: "start_date,sys_id",
               sysparm_limit: 1000,
             },
-          }
+          },
         );
 
         return response?.data?.result || [];
@@ -263,7 +255,7 @@ const HomeLayout = () => {
               sysparm_fields: "u_x_nuvo_health_scan_healthcheck_logs",
               sysparm_limit: 100,
             },
-          }
+          },
         );
 
         setHealthCheckLogs(response?.data?.result || []);
@@ -280,7 +272,7 @@ const HomeLayout = () => {
     if (!healthCheckLogs || healthCheckLogs.length <= 1) return;
     // Extract sys_ids from healthCheckLogs
     const sysIds = healthCheckLogs.map(
-      (item) => item.u_x_nuvo_health_scan_healthcheck_logs.value
+      (item) => item.u_x_nuvo_health_scan_healthcheck_logs.value,
     );
 
     // Construct the query string for the API call
@@ -350,7 +342,7 @@ const HomeLayout = () => {
               sysparm_fields: "u_x_nuvo_health_scan_healthcheck_logs",
               sysparm_limit: 10,
             },
-          }
+          },
         );
 
         const logs = response?.data?.result || [];
@@ -373,12 +365,12 @@ const HomeLayout = () => {
                 sysparm_fields: "result,differences_between_healthchecks",
                 sysparm_limit: 10,
               },
-            }
+            },
           );
 
           setDetailedHealthCheckLogs(detailedResponse?.data?.result || []);
           setDifferencesData(
-            detailedResponse?.data?.differences_between_healthchecks || []
+            detailedResponse?.data?.differences_between_healthchecks || [],
           );
         } else {
           setDetailedHealthCheckLogs([]);
@@ -387,7 +379,7 @@ const HomeLayout = () => {
       } catch (error) {
         console.error(
           "Error fetching OOTB health check logs or detailed logs:",
-          error
+          error,
         );
       }
     };
@@ -414,7 +406,7 @@ const HomeLayout = () => {
               sysparm_fields: "u_x_nuvo_health_scan_healthcheck_logs",
               sysparm_limit: 1,
             },
-          }
+          },
         );
 
         const logs = response?.data?.result || [];
@@ -437,7 +429,7 @@ const HomeLayout = () => {
                 sysparm_fields: "result",
                 sysparm_limit: 1,
               },
-            }
+            },
           );
 
           setDetailedUpgradeConflicLogs(detailedResponse?.data?.result || []);
@@ -445,7 +437,7 @@ const HomeLayout = () => {
       } catch (error) {
         console.error(
           "Error fetching OOTB health check logs or detailed logs:",
-          error
+          error,
         );
       }
     };
@@ -482,10 +474,112 @@ const HomeLayout = () => {
     setHealthCheckLogs([]);
   };
 
+  const steps = [
+    {
+      target: "#client-dropdown",
+      content: "Select a client to begin the health scan analysis.",
+      placement: "bottom",
+    },
+    {
+      target: "#application-dropdown",
+      content: "Choose the application you want to analyze.",
+      placement: "bottom",
+    },
+    {
+      target: "#date-dropdown",
+      content: "Select the scan date to view detailed results.",
+      placement: "bottom",
+    },
+
+    // Now tabs
+    {
+      target: "#tab-feature",
+      content: "This is the Feature Report tab.",
+      placement: "bottom",
+    },
+    {
+      target: "#tab-data-integrity",
+      content: "This tab shows Data Integrity issues.",
+      placement: "bottom",
+    },
+    {
+      target: "#tab-oob",
+      content: "Here you can review OOB conflicts.",
+      placement: "bottom",
+    },
+    {
+      target: "#tab-upgrade",
+      content: "This tab displays Upgrade Conflicts.",
+      placement: "bottom",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <Joyride
+        steps={steps}
+        run={runTour}
+        stepIndex={stepIndex}
+        continuous={true}
+        showSkipButton={true}
+        showProgress={true}
+        disableOverlayClose={true}
+        spotlightClicks={false}
+        styles={{
+          options: {
+            zIndex: 10000,
+            primaryColor: "#74caf2", // Sky Blue (Tailwind sky-500)
+            textColor: "#1f2937", // Dark text
+            backgroundColor: "#ffffff", // Tooltip background
+            arrowColor: "#ffffff",
+          },
+        }}
+        callback={(data) => {
+          const { status, index, type, action } = data;
+
+          if (type === "step:after" && action === "next") {
+            const nextIndex = index + 1;
+            setStepIndex(nextIndex);
+
+            // Switch tabs when entering tab steps
+            if (nextIndex === 3) {
+              setActiveTab("");
+              navigate("");
+            }
+
+            if (nextIndex === 4) {
+              setActiveTab("data-integrity");
+              navigate("data-integrity");
+            }
+
+            if (nextIndex === 5) {
+              setActiveTab("oob-conflict");
+              navigate("oob-conflict");
+            }
+
+            if (nextIndex === 6) {
+              setActiveTab("upgrade-conflict");
+              navigate("upgrade-conflict");
+            }
+          }
+
+          if (status === "finished" || status === "skipped") {
+            localStorage.setItem("hasSeenTour", "true");
+            setRunTour(false);
+            setStepIndex(0);
+          }
+        }}
+      />
       <div className="container mx-auto px-4 py-8">
         <div className="w-full flex justify-end">
+          <button
+            onClick={() => {
+              localStorage.removeItem("hasSeenTour");
+              setRunTour(true);
+            }}
+          >
+            Start Tour
+          </button>
           <button className="mb-4" onClick={toggleDarkMode}>
             {isDarkMode ? (
               <LuSun className="h-6 w-6" />
@@ -495,56 +589,67 @@ const HomeLayout = () => {
           </button>
         </div>
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <ClientSelectionDropdown
-            items={clientData}
-            label="Select Client"
-            icon={<GrOrganization />}
-            selectedItem={selectedClient}
-            onItemSelect={handleClientSelect}
-          />
-          {activeTab !== "oob-conflict" && activeTab !== "upgrade-conflict" && (
-            <ApplicationSelectionDropdown
-              items={applicationData}
-              label="Select Application"
-              icon={<MdSettingsApplications />}
-              selectedItem={selectedApplication}
-              onItemSelect={handleApplicationSelect}
-              disabled={!selectedClient}
+          <div id="client-dropdown">
+            <ClientSelectionDropdown
+              items={clientData}
+              label="Select Client"
+              icon={<GrOrganization />}
+              selectedItem={selectedClient}
+              onItemSelect={handleClientSelect}
             />
+          </div>
+          {activeTab !== "oob-conflict" && activeTab !== "upgrade-conflict" && (
+            <div id="application-dropdown">
+              <ApplicationSelectionDropdown
+                items={applicationData}
+                label="Select Application"
+                icon={<MdSettingsApplications />}
+                selectedItem={selectedApplication}
+                onItemSelect={handleApplicationSelect}
+                disabled={!selectedClient}
+              />
+            </div>
           )}
 
           {activeTab !== "oob-conflict" && activeTab !== "upgrade-conflict" && (
-            <StartDateSelectionDropdown
-              items={startDateData}
-              label="Select Date"
-              icon={<MdDateRange />}
-              selectedItem={selectedDate}
-              onItemSelect={handleDateSelect}
-              disabled={!selectedApplication}
-            />
+            <div id="date-dropdown">
+              <StartDateSelectionDropdown
+                items={startDateData}
+                label="Select Date"
+                icon={<MdDateRange />}
+                selectedItem={selectedDate}
+                onItemSelect={handleDateSelect}
+                disabled={!selectedApplication}
+              />
+            </div>
           )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8 transition-all duration-300">
           <div className="flex justify-between">
             <div className="flex space-x-4 mb-6">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    navigate(tab.id);
-                  }}
-                  className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                    activeTab === tab.id
-                      ? "bg-sky-500 text-white shadow-lg"
-                      : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                  }`}
-                >
-                  <tab.icon className="mr-2" />
-                  {tab.label}
-                </button>
-              ))}
+              {tabs.map((tab) => {
+                const tabId = tab.id === "" ? "tab-feature" : `tab-${tab.id}`;
+
+                return (
+                  <button
+                    id={tabId}
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      navigate(tab.id);
+                    }}
+                    className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                      activeTab === tab.id
+                        ? "bg-sky-500 text-white shadow-lg"
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    <tab.icon className="mr-2" />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
             <div className="flex">
               {parsedData[0]?.Modified[0]?.nuvolo_version && (
