@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import Joyride from "react-joyride";
 import { useOutletContext } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { RiFileExcel2Fill } from "react-icons/ri";
@@ -9,6 +10,8 @@ const UpgradeConflict = () => {
   const [activeTab, setActiveTab] = useState("P1"); // Default to P1
   const [currentPage, setCurrentPage] = useState({ P1: 1, P2: 1 });
   const itemsPerPage = 15;
+  const [runUpgradeTour, setRunUpgradeTour] = useState(false);
+  const [upgradeStepIndex, setUpgradeStepIndex] = useState(0);
 
   const downloadAllUpgradeConflicts = () => {
     try {
@@ -212,16 +215,102 @@ const UpgradeConflict = () => {
     );
   }
 
+  const upgradeSteps = [
+    {
+      target: "#upgrade-cards",
+      content:
+        "This section summarizes upgrade conflicts for P1 and P2. Each card shows how many conflicts were detected for that phase.",
+      placement: "top",
+    },
+    {
+      target: "#upgrade-tab-p1",
+      content:
+        "Tab 1 shows the detailed Upgrade History P1 conflicts. We'll start by focusing on this tab.",
+      placement: "top",
+    },
+    {
+      target: "#upgrade-tab-p2",
+      content:
+        "Tab 2 shows Upgrade History P2 conflicts. After reviewing P1, you can switch here to see P2 details.",
+      placement: "top",
+    },
+    {
+      target: "#upgrade-excel-download",
+      content:
+        "Use this Excel icon to download all upgrade conflicts (both P1 and P2) into a single Excel file.",
+      placement: "left",
+    },
+    {
+      target: "#version-summary",
+      content:
+        "Here you can also review Nuvolo and ServiceNow version information for additional context about the upgrade.",
+      placement: "top",
+    },
+  ];
+
+  useEffect(() => {
+    setRunUpgradeTour(true);
+    setUpgradeStepIndex(0);
+  }, []);
+
   return (
     <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <Joyride
+        steps={upgradeSteps}
+        run={runUpgradeTour}
+        stepIndex={upgradeStepIndex}
+        continuous={true}
+        showSkipButton={true}
+        showProgress={true}
+        disableOverlayClose={true}
+        spotlightClicks={false}
+        styles={{
+          options: {
+            zIndex: 10000,
+            primaryColor: "#74caf2",
+            textColor: "#1f2937",
+            backgroundColor: "#ffffff",
+            arrowColor: "#ffffff",
+          },
+        }}
+        callback={(data) => {
+          const { status, index, type, action } = data;
+
+          if (type === "step:after") {
+            const nextIndex =
+              action === "next"
+                ? index + 1
+                : action === "prev"
+                  ? index - 1
+                  : index;
+            setUpgradeStepIndex(nextIndex);
+
+            // When moving to the P2 step, ensure the P2 tab is selected
+            if (action === "next" && nextIndex === 2) {
+              setActiveTab("P2");
+            }
+          }
+
+          if (status === "finished" || status === "skipped") {
+            setRunUpgradeTour(false);
+            setUpgradeStepIndex(0);
+          }
+        }}
+      />
       {nuvoloTablesCount > 0 && (
-        <p className="mb-4 text-gray-600 dark:text-gray-400">
+        <p
+          className="mb-4 text-gray-600 dark:text-gray-400"
+          id="version-summary"
+        >
           Nuvolo's Table Count: {nuvoloTablesCount}
         </p>
       )}
 
       {/* Cards for both P1 and P2 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
+        id="upgrade-cards"
+      >
         {renderCard(
           "Upgrade History P1",
           getConflictCount(upgradeConflicts.upgradeHistoryP1),
@@ -239,6 +328,7 @@ const UpgradeConflict = () => {
             className={`flex-1 py-2 px-4 text-center focus:outline-none ${
               activeTab === "P1" ? "bg-sky-500 text-white" : "text-white"
             }`}
+            id="upgrade-tab-p1"
           >
             Upgrade History P1
           </button>
@@ -248,6 +338,7 @@ const UpgradeConflict = () => {
             className={`flex-1 py-2 px-4 text-center focus:outline-none ${
               activeTab === "P2" ? "bg-sky-500 text-white" : "text-white"
             }`}
+            id="upgrade-tab-p2"
           >
             Upgrade History P2
           </button>
@@ -260,6 +351,7 @@ const UpgradeConflict = () => {
           className="ml-4 cursor-pointer"
           title="Download all upgrade conflicts"
           onClick={downloadAllUpgradeConflicts}
+          id="upgrade-excel-download"
         />
       </div>
 

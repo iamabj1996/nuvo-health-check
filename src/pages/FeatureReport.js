@@ -19,7 +19,6 @@ const override = {
 
 const FeatureReport = () => {
   const { featureUsageCount } = useOutletContext();
-  const [tourStep, setTourStep] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -38,28 +37,6 @@ const FeatureReport = () => {
 
     parseData();
   }, [featureUsageCount]);
-
-  useEffect(() => {
-    if (tourStep > 0 && tourStep < 5) {
-      const timer = setTimeout(() => {
-        setTourStep((prev) => prev + 1);
-      }, 2500); // 2.5 sec per step
-
-      return () => clearTimeout(timer);
-    }
-
-    if (tourStep === 5) {
-      // trigger next tab here
-      console.log("Go to next tab");
-    }
-  }, [tourStep]);
-
-  useEffect(() => {
-    if (tourStep === 1 && Object.keys(parsedData).length > 0) {
-      const firstGroup = Object.keys(parsedData)[0];
-      setExpandedGroups(new Set([firstGroup]));
-    }
-  }, [tourStep, parsedData]);
 
   const filteredData = useMemo(() => {
     if (!searchTerm) return parsedData;
@@ -86,11 +63,6 @@ const FeatureReport = () => {
       return acc;
     }, {});
   }, [searchTerm, parsedData]);
-
-  const highlightClass = (step) =>
-    tourStep === step
-      ? "ring-4 ring-sky-400 ring-offset-2 rounded-lg transition"
-      : "";
 
   const downloadExcel = () => {
     const rows = [];
@@ -169,7 +141,10 @@ const FeatureReport = () => {
         <>
           <div className="mb-4 flex items-center space-x-4">
             <div className="mb-6 w-full flex items-center gap-4">
-              <div className={"flex-1 relative " + highlightClass(3)}>
+              <div
+                id="feature-search"
+                className="flex-1 relative"
+              >
                 <input
                   type="text"
                   placeholder="Search features..."
@@ -182,26 +157,22 @@ const FeatureReport = () => {
 
               <Tooltip text="Export to Excel" position="left">
                 <RiFileExcel2Fill
+                  id="feature-download-excel"
                   size="2.2rem"
                   color="#33C481"
                   onClick={downloadExcel}
-                  className={
-                    "cursor-pointer flex-shrink-0 " + highlightClass(4)
-                  }
+                  className="cursor-pointer flex-shrink-0"
                 />
               </Tooltip>
             </div>
           </div>
           <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-            <table className="min-w-full bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+            <table
+              className="min-w-full bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden"
+              id="feature-group-accordion"
+            >
               <thead className="bg-gray-200 dark:bg-gray-700">
-                <tr
-                  className={
-                    "bg-gray-100 dark:bg-gray-600 cursor-pointer " +
-                    highlightClass(1)
-                  }
-                  onClick={() => toggleGroup(group)}
-                >
+                <tr>
                   <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-300">
                     Feature Group
                   </th>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import Joyride from "react-joyride";
 import dxPieChart from "devextreme/viz/pie_chart";
 import dxChart from "devextreme/viz/chart";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
 
 const ChartsAndTableComponent = () => {
+  const navigate = useNavigate();
   const dataTableRef = useRef(null);
   const pieSectionRef = useRef(null);
   const { detailedHealthCheckLogs, differencesData } = useOutletContext();
@@ -46,6 +48,9 @@ const ChartsAndTableComponent = () => {
   const [colorPalette, setColorPalette] = useState("Bright");
   const [activeTab, setActiveTab] = useState("dataTable");
   const [groupBy, setGroupBy] = useState("table_name");
+  const [chartsReady, setChartsReady] = useState(false);
+  const [runOobTour, setRunOobTour] = useState(false);
+  const [oobStepIndex, setOobStepIndex] = useState(0);
 
   useEffect(() => {
     if (parsedData.length > 0) {
@@ -138,7 +143,9 @@ const ChartsAndTableComponent = () => {
       }
     }
 
-    const pieChartDifferences = new dxPieChart(pieChartDifferencesRef.current, {
+    const pieChartDifferences = new dxPieChart(
+      pieChartDifferencesRef.current,
+      {
       dataSource: pieChartDifferencesData,
       series: [
         {
@@ -193,7 +200,16 @@ const ChartsAndTableComponent = () => {
           title: { text: "Differences" },
         },
       ],
-      legend: { verticalAlignment: "bottom", horizontalAlignment: "center" },
+      legend: {
+        verticalAlignment: "bottom",
+        horizontalAlignment: "center",
+        customizeText: (e) =>
+          e.seriesName === "New"
+            ? "New Scripts Added"
+            : e.seriesName === "Modified"
+              ? "Modified Scripts"
+              : "Difference Scripts",
+      },
       onPointClick: (e) => {
         const healthCheckIndex = e.target.data.index;
         const healthCheckData = parsedData[healthCheckIndex];
@@ -216,6 +232,8 @@ const ChartsAndTableComponent = () => {
         }
       },
     });
+
+    setChartsReady(true);
 
     return () => {
       pieChart.dispose();
@@ -258,9 +276,91 @@ const ChartsAndTableComponent = () => {
     });
   };
 
+  const oobSteps = [
+    {
+      target: "#oob-historical-overview",
+      content:
+        "This section shows the HealthCheck Historical Overview for scripts. The legend explains New Scripts Added, Modified Scripts, and Difference Scripts between runs.",
+      placement: "top",
+    },
+    {
+      target: "#oob-bar-chart",
+      content:
+        "Manually click the first bar in this chart to drill into that HealthCheck run and see its script-type breakdown.",
+      placement: "top",
+    },
+    {
+      target: "#oob-pie-chart",
+      content:
+        "This pie chart shows how scripts are distributed by script type for the selected HealthCheck. Manually click any slice to focus on that script type.",
+      placement: "top",
+    },
+    {
+      target: "#oob-data-table",
+      content:
+        "Below, the Data Table updates based on your pie selection. You can change grouping and review columns like script name, type, last updated, table name, and state.",
+      placement: "top",
+    },
+    {
+      target: "#oob-download-excel",
+      content:
+        "Use this Excel icon to download the current table view, including your grouping and filtering, for offline analysis.",
+      placement: "left",
+    },
+  ];
+
+  useEffect(() => {
+    if (!chartsReady) return;
+    // Always start the OOB tour on the bar chart step when charts are ready
+    setRunOobTour(true);
+    setOobStepIndex(0);
+  }, [chartsReady]);
+
   return (
     <div className="container mx-auto p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <Joyride
+        steps={oobSteps}
+        run={runOobTour}
+        stepIndex={oobStepIndex}
+        continuous={true}
+        showSkipButton={true}
+        showProgress={true}
+        disableOverlayClose={true}
+        spotlightClicks={false}
+        styles={{
+          options: {
+            zIndex: 10000,
+            primaryColor: "#74caf2",
+            textColor: "#1f2937",
+            backgroundColor: "#ffffff",
+            arrowColor: "#ffffff",
+          },
+        }}
+        callback={(data) => {
+          const { status, index, type, action } = data;
+
+          if (type === "step:after") {
+            const nextIndex =
+              action === "next"
+                ? index + 1
+                : action === "prev"
+                  ? index - 1
+                  : index;
+            setOobStepIndex(nextIndex);
+          }
+
+          if (status === "finished" || status === "skipped") {
+            setRunOobTour(false);
+            setOobStepIndex(0);
+            // After completing OOB tour, redirect to Upgrade Conflict tab (absolute route)
+            navigate("/upgrade-conflict");
+          }
+        }}
+      />
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
+        id="oob-historical-overview"
+      >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
             HealthCheck Historical Overview
@@ -291,6 +391,7 @@ const ChartsAndTableComponent = () => {
           ref={barChartRef}
           style={{ height: "300px" }}
           className="w-full"
+          id="oob-bar-chart"
         ></div>
 
         <div
@@ -305,6 +406,7 @@ const ChartsAndTableComponent = () => {
               ref={pieChartRef}
               style={{ height: "300px" }}
               className="w-full"
+              id="oob-pie-chart"
             ></div>
           </div>
 
@@ -324,6 +426,7 @@ const ChartsAndTableComponent = () => {
       <div
         ref={dataTableRef}
         className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
+        id="oob-data-table"
       >
         <div className="mb-4 border-b-2 border-gray-300 dark:border-gray-600">
           <div

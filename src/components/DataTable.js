@@ -207,18 +207,20 @@ const CustomTable = ({ data = [], groupBy, onGroupByChange }) => {
           value={groupBy}
           onChange={(e) => onGroupByChange(e.target.value)}
           className="px-4 py-2 rounded-lg border bg-gray-700 text-gray-300"
+          id="oob-group-by"
         >
           <option value="none">No Grouping</option>
           <option value="script_type">Group by Script Type</option>
           <option value="table_name">Group by Table Name</option>
           <option value="script_state">Group by Script State</option>
         </select>
-        <Tooltip text="Export to Excel">
+        <Tooltip text="Export this table to Excel">
           <RiFileExcel2Fill
             size="2.2rem"
             color="#33C481"
             onClick={exportToExcel}
             cursor="pointer"
+            id="oob-download-excel"
           />
         </Tooltip>
         {/* <CustomButton onClick={exportToExcel} className="flex items-center">

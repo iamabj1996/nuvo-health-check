@@ -174,7 +174,7 @@ export default function DataIntegrity() {
       ) : (
         <>
           <div className="mb-6 relative flex items-center gap-4">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" id="data-integrity-search">
               <input
                 type="text"
                 placeholder="Search"
@@ -184,8 +184,9 @@ export default function DataIntegrity() {
               />
               <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
-            <Tooltip text="Export to Excel">
+            <Tooltip text="Export all Data Integrity checks to Excel" position="left">
               <RiFileExcel2Fill
+                id="data-integrity-download-excel"
                 display={!Object.keys(filteredResults).length}
                 size="2.2rem"
                 color="#33C481"
@@ -202,6 +203,7 @@ export default function DataIntegrity() {
                 <div
                   key={category}
                   className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-all duration-300 hover:shadow-lg"
+                  id={category === Object.keys(filteredResults)[0] ? "data-integrity-card" : undefined}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">

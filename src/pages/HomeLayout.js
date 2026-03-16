@@ -39,6 +39,8 @@ const HomeLayout = () => {
   );
   const [stepIndex, setStepIndex] = useState(0);
   const [runTour, setRunTour] = useState(false);
+  const [oobStepIndex, setOobStepIndex] = useState(0);
+  const [runOobTour, setRunOobTour] = useState(false);
   const [clientInstanceName, setClientInstanceName] = useState("");
 
   const toggleDarkMode = () => {
@@ -477,40 +479,121 @@ const HomeLayout = () => {
   const steps = [
     {
       target: "#client-dropdown",
-      content: "Select a client to begin the health scan analysis.",
+      content:
+        "Start by selecting a client. For this walkthrough, we automatically select the 'Nuvolo- Dev' client for you.",
       placement: "bottom",
     },
     {
       target: "#application-dropdown",
-      content: "Choose the application you want to analyze.",
+      content:
+        "Next, choose the Facilities application you want to analyze from this list.",
       placement: "bottom",
     },
     {
       target: "#date-dropdown",
-      content: "Select the scan date to view detailed results.",
+      content:
+        "Now pick the Health Check run date. For this tour we use the scan from 2026-02-04.",
       placement: "bottom",
     },
 
-    // Now tabs
     {
       target: "#tab-feature",
-      content: "This is the Feature Report tab.",
+      content:
+        "This is the Feature Report tab, where you can review feature usage grouped by feature areas.",
       placement: "bottom",
     },
+    {
+      target: "#feature-search",
+      content:
+        "Use this search box to quickly find specific feature groups or individual features by name.",
+      placement: "bottom",
+    },
+    {
+      target: "#feature-group-accordion",
+      content:
+        "Here each row is a Feature Group. Expand a group to see feature names, current and previous HealthCheck counts, thresholds, and deep links to each feature.",
+      placement: "top",
+    },
+    {
+      target: "#feature-download-excel",
+      content:
+        "Click this Excel icon to download the full Feature Report as an Excel file for offline review or sharing.",
+      placement: "left",
+    },
+
+    // Other tabs
     {
       target: "#tab-data-integrity",
       content: "This tab shows Data Integrity issues.",
       placement: "bottom",
     },
     {
+      target: "#data-integrity-search",
+      content:
+        "On the Data Integrity tab, use this search to quickly filter checks by category or check name.",
+      placement: "bottom",
+    },
+    {
+      target: "#data-integrity-download-excel",
+      content:
+        "Use this Excel button to download all visible Data Integrity checks to an Excel file.",
+      placement: "left",
+    },
+    {
+      target: "#data-integrity-card",
+      content:
+        "Each card is a Data Integrity category. 'Curr' refers to the current HealthCheck count, and 'Prev' refers to the previous run. You can also download Excel just for this card using the download icon.",
+      placement: "top",
+    },
+    {
       target: "#tab-oob",
-      content: "Here you can review OOB conflicts.",
+      content:
+        "Now let's look at OOB Conflicts to understand script changes across health checks.",
       placement: "bottom",
     },
     {
       target: "#tab-upgrade",
       content: "This tab displays Upgrade Conflicts.",
       placement: "bottom",
+    },
+  ];
+
+  const oobSteps = [
+    {
+      target: "#tab-oob",
+      content:
+        "We are now on the OOB Conflict tab. Use this view to understand changes to out‑of‑box scripts across health checks.",
+      placement: "bottom",
+    },
+    {
+      target: "#oob-historical-overview",
+      content:
+        "This section shows the HealthCheck Historical Overview for scripts. The legend explains New Scripts Added, Modified Scripts, and Difference Scripts between runs.",
+      placement: "top",
+    },
+    {
+      target: "#oob-bar-chart",
+      content:
+        "Manually click the first bar in this chart to drill into that HealthCheck run and see its script‑type breakdown.",
+      placement: "top",
+    },
+    {
+      target: "#oob-pie-chart",
+      content:
+        "This pie chart shows how scripts are distributed by script type for the selected HealthCheck. Manually click any slice to focus on that script type.",
+      placement: "top",
+    },
+    {
+      target: "#oob-data-table",
+      content:
+        "Below, the Data Table updates based on your pie selection. You can change grouping (e.g., by script type, table, or script state) and review columns like script name, type, last updated, table name, and state.",
+      placement: "top",
+    },
+    {
+      target: "#oob-download-excel",
+      content:
+        "Use this Excel icon to download the current table view, including your grouping and filtering, for offline analysis.",
+      placement: "left",
     },
   ];
 
@@ -537,54 +620,156 @@ const HomeLayout = () => {
         callback={(data) => {
           const { status, index, type, action } = data;
 
-          if (type === "step:after" && action === "next") {
-            const nextIndex = index + 1;
+          if (type === "step:after") {
+            const nextIndex =
+              action === "next"
+                ? index + 1
+                : action === "prev"
+                  ? index - 1
+                  : index;
             setStepIndex(nextIndex);
 
-            // Switch tabs when entering tab steps
-            if (nextIndex === 3) {
-              setActiveTab("");
-              navigate("");
+            if (action === "next") {
+              if (index === 0 && !selectedClient && clientData.length > 0) {
+                const normalize = (str) =>
+                  (str || "").toLowerCase().replace(/[\s-_]+/g, "");
+                const defaultClient =
+                  clientData.find((c) =>
+                    normalize(c.name).includes("nuvolodev"),
+                  ) || clientData[0];
+                handleClientSelect({
+                  name: defaultClient.name,
+                  clientConfigId: defaultClient.sys_id,
+                  client_instance: defaultClient.client_instance,
+                });
+              }
+
+              if (
+                index === 1 &&
+                !selectedApplication &&
+                applicationData.length > 0
+              ) {
+                const preferredApplication =
+                  applicationData.find((app) =>
+                    app.name?.toLowerCase().includes("facilit"),
+                  ) || applicationData[0];
+                handleApplicationSelect(preferredApplication);
+              }
+
+              if (
+                index === 2 &&
+                !selectedDate &&
+                startDateData.length > 0
+              ) {
+                const targetDate = startDateData.find(
+                  (item) =>
+                    item.start_date &&
+                    item.start_date.startsWith("2026-02-04"),
+                );
+                const dateToSelect = targetDate || startDateData[0];
+                handleDateSelect(dateToSelect);
+              }
+
+              if (nextIndex === 3) {
+                setActiveTab("");
+                navigate("");
+              }
+
+              if (nextIndex === 7) {
+                setActiveTab("data-integrity");
+                navigate("data-integrity");
+              }
+
+              if (nextIndex === 11) {
+                setActiveTab("oob-conflict");
+                navigate("oob-conflict");
+                setRunOobTour(true);
+                setOobStepIndex(0);
+              }
+
+              if (nextIndex === steps.length - 1) {
+                setActiveTab("upgrade-conflict");
+                navigate("upgrade-conflict");
+              }
             }
 
-            if (nextIndex === 4) {
-              setActiveTab("data-integrity");
-              navigate("data-integrity");
-            }
-
-            if (nextIndex === 5) {
-              setActiveTab("oob-conflict");
-              navigate("oob-conflict");
-            }
-
-            if (nextIndex === 6) {
-              setActiveTab("upgrade-conflict");
-              navigate("upgrade-conflict");
+            if (action === "prev") {
+              if (index === 2) {
+                setSelectedDate(null);
+              }
+              if (index === 1) {
+                setSelectedApplication(null);
+                setSelectedDate(null);
+              }
             }
           }
 
-          if (status === "finished" || status === "skipped") {
+          if (status === "finished") {
             localStorage.setItem("hasSeenTour", "true");
             setRunTour(false);
             setStepIndex(0);
           }
         }}
       />
+      {activeTab === "oob-conflict" && (
+        <Joyride
+          steps={oobSteps}
+          run={runOobTour}
+          stepIndex={oobStepIndex}
+          continuous={true}
+          showSkipButton={true}
+          showProgress={true}
+          disableOverlayClose={true}
+          spotlightClicks={false}
+          styles={{
+            options: {
+              zIndex: 10001,
+              primaryColor: "#74caf2",
+              textColor: "#1f2937",
+              backgroundColor: "#ffffff",
+              arrowColor: "#ffffff",
+            },
+          }}
+          callback={(data) => {
+            const { status, index, type, action } = data;
+
+            if (type === "step:after") {
+              const nextIndex =
+                action === "next"
+                  ? index + 1
+                  : action === "prev"
+                    ? index - 1
+                    : index;
+              setOobStepIndex(nextIndex);
+            }
+
+            if (status === "finished") {
+              setRunOobTour(false);
+              setOobStepIndex(0);
+            }
+          }}
+        />
+      )}
       <div className="container mx-auto px-4 py-8">
-        <div className="w-full flex justify-end">
+        <div className="w-full flex justify-end items-center space-x-3 mb-4">
           <button
             onClick={() => {
               localStorage.removeItem("hasSeenTour");
               setRunTour(true);
+              setStepIndex(0);
             }}
+            className="px-4 py-2 rounded-full bg-sky-500 text-white text-sm font-medium shadow hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400"
           >
             Start Tour
           </button>
-          <button className="mb-4" onClick={toggleDarkMode}>
+          <button
+            className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700"
+            onClick={toggleDarkMode}
+          >
             {isDarkMode ? (
-              <LuSun className="h-6 w-6" />
+              <LuSun className="h-5 w-5" />
             ) : (
-              <LuMoon className="h-6 w-6" />
+              <LuMoon className="h-5 w-5" />
             )}
           </button>
         </div>
