@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import Joyride from "react-joyride";
 import dxPieChart from "devextreme/viz/pie_chart";
 import dxChart from "devextreme/viz/chart";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import DataTable from "../components/DataTable";
 
 const ChartsAndTableComponent = () => {
-  const navigate = useNavigate();
   const dataTableRef = useRef(null);
   const pieSectionRef = useRef(null);
   const { detailedHealthCheckLogs, differencesData } = useOutletContext();
@@ -48,22 +46,25 @@ const ChartsAndTableComponent = () => {
   const [colorPalette, setColorPalette] = useState("Bright");
   const [activeTab, setActiveTab] = useState("dataTable");
   const [groupBy, setGroupBy] = useState("table_name");
-  const [chartsReady, setChartsReady] = useState(false);
-  const [runOobTour, setRunOobTour] = useState(false);
-  const [oobStepIndex, setOobStepIndex] = useState(0);
 
   useEffect(() => {
     if (parsedData.length > 0) {
       setHealthCheckCount(Math.min(10, parsedData.length));
-      setSelectedHealthCheckNumber(Math.min(10, parsedData.length));
+      setSelectedHealthCheckNumber(parsedData.length);
       const latestHealthCheck = parsedData[parsedData.length - 1];
       updatePieCharts(latestHealthCheck);
+      setSelectedData([...latestHealthCheck.New, ...latestHealthCheck.Modified]);
+      setSelectedDifferencesData(
+        latestHealthCheck.Differences.length > 0
+          ? [...latestHealthCheck.Differences]
+          : [],
+      );
     } else {
       setPieChartData([]);
       setPieChartDifferencesData([]);
       setSelectedData([]);
       setSelectedDifferencesData([]);
-      setSelectedHealthCheckNumber();
+      setSelectedHealthCheckNumber(undefined);
     }
   }, [parsedData, detailedHealthCheckLogs]);
 
@@ -233,8 +234,6 @@ const ChartsAndTableComponent = () => {
       },
     });
 
-    setChartsReady(true);
-
     return () => {
       pieChart.dispose();
       pieChartDifferences.dispose();
@@ -276,87 +275,8 @@ const ChartsAndTableComponent = () => {
     });
   };
 
-  const oobSteps = [
-    {
-      target: "#oob-historical-overview",
-      content:
-        "This section shows the HealthCheck Historical Overview for scripts. The legend explains New Scripts Added, Modified Scripts, and Difference Scripts between runs.",
-      placement: "top",
-    },
-    {
-      target: "#oob-bar-chart",
-      content:
-        "Manually click the first bar in this chart to drill into that HealthCheck run and see its script-type breakdown.",
-      placement: "top",
-    },
-    {
-      target: "#oob-pie-chart",
-      content:
-        "This pie chart shows how scripts are distributed by script type for the selected HealthCheck. Manually click any slice to focus on that script type.",
-      placement: "top",
-    },
-    {
-      target: "#oob-data-table",
-      content:
-        "Below, the Data Table updates based on your pie selection. You can change grouping and review columns like script name, type, last updated, table name, and state.",
-      placement: "top",
-    },
-    {
-      target: "#oob-download-excel",
-      content:
-        "Use this Excel icon to download the current table view, including your grouping and filtering, for offline analysis.",
-      placement: "left",
-    },
-  ];
-
-  useEffect(() => {
-    if (!chartsReady) return;
-    // Always start the OOB tour on the bar chart step when charts are ready
-    setRunOobTour(true);
-    setOobStepIndex(0);
-  }, [chartsReady]);
-
   return (
     <div className="container mx-auto p-4">
-      <Joyride
-        steps={oobSteps}
-        run={runOobTour}
-        stepIndex={oobStepIndex}
-        continuous={true}
-        showSkipButton={true}
-        showProgress={true}
-        disableOverlayClose={true}
-        spotlightClicks={false}
-        styles={{
-          options: {
-            zIndex: 10000,
-            primaryColor: "#74caf2",
-            textColor: "#1f2937",
-            backgroundColor: "#ffffff",
-            arrowColor: "#ffffff",
-          },
-        }}
-        callback={(data) => {
-          const { status, index, type, action } = data;
-
-          if (type === "step:after") {
-            const nextIndex =
-              action === "next"
-                ? index + 1
-                : action === "prev"
-                  ? index - 1
-                  : index;
-            setOobStepIndex(nextIndex);
-          }
-
-          if (status === "finished" || status === "skipped") {
-            setRunOobTour(false);
-            setOobStepIndex(0);
-            // After completing OOB tour, redirect to Upgrade Conflict tab (absolute route)
-            navigate("/upgrade-conflict");
-          }
-        }}
-      />
       <div
         className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
         id="oob-historical-overview"

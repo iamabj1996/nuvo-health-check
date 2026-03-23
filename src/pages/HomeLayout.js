@@ -39,8 +39,6 @@ const HomeLayout = () => {
   );
   const [stepIndex, setStepIndex] = useState(0);
   const [runTour, setRunTour] = useState(false);
-  const [oobStepIndex, setOobStepIndex] = useState(0);
-  const [runOobTour, setRunOobTour] = useState(false);
   const [clientInstanceName, setClientInstanceName] = useState("");
 
   const toggleDarkMode = () => {
@@ -476,7 +474,7 @@ const HomeLayout = () => {
     setHealthCheckLogs([]);
   };
 
-  const steps = [
+  const steps = useMemo(() => [
     {
       target: "#client-dropdown",
       content:
@@ -545,24 +543,12 @@ const HomeLayout = () => {
         "Each card is a Data Integrity category. 'Curr' refers to the current HealthCheck count, and 'Prev' refers to the previous run. You can also download Excel just for this card using the download icon.",
       placement: "top",
     },
+
+    // OOB Conflict tab
     {
-      target: "#tab-oob",
+      target: "#tab-oob-conflict",
       content:
         "Now let's look at OOB Conflicts to understand script changes across health checks.",
-      placement: "bottom",
-    },
-    {
-      target: "#tab-upgrade",
-      content: "This tab displays Upgrade Conflicts.",
-      placement: "bottom",
-    },
-  ];
-
-  const oobSteps = [
-    {
-      target: "#tab-oob",
-      content:
-        "We are now on the OOB Conflict tab. Use this view to understand changes to out‑of‑box scripts across health checks.",
       placement: "bottom",
     },
     {
@@ -574,19 +560,19 @@ const HomeLayout = () => {
     {
       target: "#oob-bar-chart",
       content:
-        "Manually click the first bar in this chart to drill into that HealthCheck run and see its script‑type breakdown.",
+        "This bar chart shows script counts across health check runs. Click any bar to drill into that run's script-type breakdown.",
       placement: "top",
     },
     {
       target: "#oob-pie-chart",
       content:
-        "This pie chart shows how scripts are distributed by script type for the selected HealthCheck. Manually click any slice to focus on that script type.",
+        "This pie chart shows how scripts are distributed by script type for the selected health check. Click any slice to filter the data table below.",
       placement: "top",
     },
     {
       target: "#oob-data-table",
       content:
-        "Below, the Data Table updates based on your pie selection. You can change grouping (e.g., by script type, table, or script state) and review columns like script name, type, last updated, table name, and state.",
+        "The data table updates based on your selection. You can change grouping (by script type, table, or script state) and review columns like script name, type, last updated, and state.",
       placement: "top",
     },
     {
@@ -595,7 +581,46 @@ const HomeLayout = () => {
         "Use this Excel icon to download the current table view, including your grouping and filtering, for offline analysis.",
       placement: "left",
     },
-  ];
+
+    // Upgrade Conflict tab
+    {
+      target: "#tab-upgrade-conflict",
+      content:
+        "Finally, let's review Upgrade Conflicts — scripts that may conflict with an upcoming ServiceNow upgrade.",
+      placement: "bottom",
+    },
+    {
+      target: "#upgrade-cards",
+      content:
+        "These cards summarize upgrade conflicts for P1 and P2. Each card shows how many conflicts were detected for that phase.",
+      placement: "top",
+    },
+    {
+      target: "#upgrade-tab-p1",
+      content:
+        "This tab shows the detailed Upgrade History P1 conflicts. Review the file names, priorities, and dispositions here.",
+      placement: "top",
+    },
+    {
+      target: "#upgrade-tab-p2",
+      content:
+        "This tab shows Upgrade History P2 conflicts. Switch here after reviewing P1 to see P2 details.",
+      placement: "top",
+    },
+    {
+      target: "#upgrade-excel-download",
+      content:
+        "Use this Excel icon to download all upgrade conflicts (both P1 and P2) into a single Excel file.",
+      placement: "left",
+    },
+    {
+      target: "#version-summary",
+      content:
+        "Here you can review Nuvolo's table count for additional context about the upgrade. That completes the full tour!",
+      placement: "top",
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
@@ -620,6 +645,14 @@ const HomeLayout = () => {
         callback={(data) => {
           const { status, index, type, action } = data;
 
+          // When a target isn't in the DOM yet, briefly pause and restart
+          // Joyride at the same step once the DOM has settled.
+          if (type === "error:target_not_found") {
+            setRunTour(false);
+            setTimeout(() => setRunTour(true), 300);
+            return;
+          }
+
           if (type === "step:after") {
             const nextIndex =
               action === "next"
@@ -627,9 +660,9 @@ const HomeLayout = () => {
                 : action === "prev"
                   ? index - 1
                   : index;
-            setStepIndex(nextIndex);
 
             if (action === "next") {
+              // ── Auto-select demo data ──────────────────────────────────
               if (index === 0 && !selectedClient && clientData.length > 0) {
                 const normalize = (str) =>
                   (str || "").toLowerCase().replace(/[\s-_]+/g, "");
@@ -656,100 +689,80 @@ const HomeLayout = () => {
                 handleApplicationSelect(preferredApplication);
               }
 
-              if (
-                index === 2 &&
-                !selectedDate &&
-                startDateData.length > 0
-              ) {
+              if (index === 2 && !selectedDate && startDateData.length > 0) {
                 const targetDate = startDateData.find(
                   (item) =>
                     item.start_date &&
                     item.start_date.startsWith("2026-02-04"),
                 );
-                const dateToSelect = targetDate || startDateData[0];
-                handleDateSelect(dateToSelect);
+                handleDateSelect(targetDate || startDateData[0]);
               }
 
+              // ── Same-tab navigation steps ──────────────────────────────
               if (nextIndex === 3) {
                 setActiveTab("");
                 navigate("");
               }
-
               if (nextIndex === 7) {
                 setActiveTab("data-integrity");
                 navigate("data-integrity");
               }
 
+              // ── Cross-tab navigation steps ─────────────────────────────
+              // Stop the tour, navigate, update step, then restart so
+              // Joyride re-initialises cleanly on the new page.
               if (nextIndex === 11) {
+                setStepIndex(11);
+                setRunTour(false);
                 setActiveTab("oob-conflict");
                 navigate("oob-conflict");
-                setRunOobTour(true);
-                setOobStepIndex(0);
+                setTimeout(() => setRunTour(true), 150);
+                return;
               }
-
-              if (nextIndex === steps.length - 1) {
+              if (nextIndex === 17) {
+                setStepIndex(17);
+                setRunTour(false);
                 setActiveTab("upgrade-conflict");
                 navigate("upgrade-conflict");
+                setTimeout(() => setRunTour(true), 150);
+                return;
               }
             }
 
             if (action === "prev") {
-              if (index === 2) {
-                setSelectedDate(null);
-              }
+              if (index === 2) setSelectedDate(null);
               if (index === 1) {
                 setSelectedApplication(null);
                 setSelectedDate(null);
               }
+              if (index === 11) {
+                setStepIndex(10);
+                setRunTour(false);
+                setActiveTab("data-integrity");
+                navigate("data-integrity");
+                setTimeout(() => setRunTour(true), 150);
+                return;
+              }
+              if (index === 17) {
+                setStepIndex(16);
+                setRunTour(false);
+                setActiveTab("oob-conflict");
+                navigate("oob-conflict");
+                setTimeout(() => setRunTour(true), 150);
+                return;
+              }
             }
+
+            setStepIndex(nextIndex);
           }
 
-          if (status === "finished") {
+          if (status === "finished" || status === "skipped") {
             localStorage.setItem("hasSeenTour", "true");
             setRunTour(false);
             setStepIndex(0);
           }
         }}
       />
-      {activeTab === "oob-conflict" && (
-        <Joyride
-          steps={oobSteps}
-          run={runOobTour}
-          stepIndex={oobStepIndex}
-          continuous={true}
-          showSkipButton={true}
-          showProgress={true}
-          disableOverlayClose={true}
-          spotlightClicks={false}
-          styles={{
-            options: {
-              zIndex: 10001,
-              primaryColor: "#74caf2",
-              textColor: "#1f2937",
-              backgroundColor: "#ffffff",
-              arrowColor: "#ffffff",
-            },
-          }}
-          callback={(data) => {
-            const { status, index, type, action } = data;
-
-            if (type === "step:after") {
-              const nextIndex =
-                action === "next"
-                  ? index + 1
-                  : action === "prev"
-                    ? index - 1
-                    : index;
-              setOobStepIndex(nextIndex);
-            }
-
-            if (status === "finished") {
-              setRunOobTour(false);
-              setOobStepIndex(0);
-            }
-          }}
-        />
-      )}
       <div className="container mx-auto px-4 py-8">
         <div className="w-full flex justify-end items-center space-x-3 mb-4">
           <button

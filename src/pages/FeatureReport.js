@@ -4,6 +4,9 @@ import {
   FiChevronDown,
   FiSearch,
   FiExternalLink,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiMinus,
 } from "react-icons/fi";
 import { useOutletContext } from "react-router-dom";
 import ClockLoader from "react-spinners/ClockLoader";
@@ -16,6 +19,72 @@ const override = {
   margin: "0 auto",
   borderColor: "#28b3d8",
 };
+
+const TrendBadge = ({ count, pastCount }) => {
+  const curr = Number(count);
+  const prev = Number(pastCount);
+  const hasPrev =
+    pastCount !== undefined &&
+    pastCount !== null &&
+    pastCount !== "" &&
+    !isNaN(prev);
+
+  if (!hasPrev) {
+    return <span className="text-xs text-gray-400 italic">—</span>;
+  }
+
+  const diff = curr - prev;
+  const pct = prev > 0 ? Math.round(Math.abs((diff / prev) * 100)) : null;
+
+  if (diff > 0) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2 flex-shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+        </span>
+        <span className="inline-flex items-center gap-1 bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
+          <FiTrendingUp size={11} />
+          +{diff}
+          {pct !== null && (
+            <span className="opacity-75 font-normal">({pct}%)</span>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  if (diff < 0) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2 flex-shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+        </span>
+        <span className="inline-flex items-center gap-1 bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap">
+          <FiTrendingDown size={11} />
+          {diff}
+          {pct !== null && (
+            <span className="opacity-75 font-normal">({pct}%)</span>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="relative flex h-2 w-2 flex-shrink-0">
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400"></span>
+      </span>
+      <span className="inline-flex items-center gap-1 bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+        <FiMinus size={11} />
+        steady
+      </span>
+    </div>
+  );
+};
+
 
 const FeatureReport = () => {
   const { featureUsageCount } = useOutletContext();
@@ -44,18 +113,15 @@ const FeatureReport = () => {
     const lowercaseSearchTerm = searchTerm.toLowerCase();
 
     return Object.entries(parsedData).reduce((acc, [group, values]) => {
-      // If the search term is in the group name, include the entire group
       if (group.toLowerCase().includes(lowercaseSearchTerm)) {
         acc[group] = values;
         return acc;
       }
 
-      // Filter subkeys that match the search term
       const filteredValues = Object.entries(values).filter(([subKey]) =>
         subKey.toLowerCase().includes(lowercaseSearchTerm),
       );
 
-      // If any subkeys match, include the filtered group
       if (filteredValues.length > 0) {
         acc[group] = Object.fromEntries(filteredValues);
       }
@@ -69,11 +135,16 @@ const FeatureReport = () => {
 
     Object.entries(parsedData).forEach(([group, values]) => {
       Object.entries(values).forEach(([subKey, data]) => {
+        const diff =
+          data.pastCount !== undefined && data.pastCount !== ""
+            ? Number(data.count) - Number(data.pastCount)
+            : null;
         rows.push({
           "Feature Group": group,
           "Feature Name": subKey,
           "Current HealthCheck": data.count ?? "-",
           "Previous HealthCheck": data.pastCount ?? "-",
+          Trend: diff === null ? "N/A" : diff > 0 ? `+${diff}` : `${diff}`,
           Threshold: data.threshold ?? "-",
           Status:
             Number(data.count) <= Number(data.threshold)
@@ -88,7 +159,6 @@ const FeatureReport = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Feature Report");
 
-    // This triggers download directly
     XLSX.writeFile(
       workbook,
       `Feature_Report_${new Date().toISOString().slice(0, 10)}.xlsx`,
@@ -141,10 +211,7 @@ const FeatureReport = () => {
         <>
           <div className="mb-4 flex items-center space-x-4">
             <div className="mb-6 w-full flex items-center gap-4">
-              <div
-                id="feature-search"
-                className="flex-1 relative"
-              >
+              <div id="feature-search" className="flex-1 relative">
                 <input
                   type="text"
                   placeholder="Search features..."
@@ -185,6 +252,9 @@ const FeatureReport = () => {
                   <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-300">
                     Previous HealthCheck
                   </th>
+                  <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-300">
+                    Trend
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -204,7 +274,7 @@ const FeatureReport = () => {
                           )}
                           {group}
                         </td>
-                        <td className={"px-4 py-1"}>
+                        <td className="px-4 py-1">
                           <span
                             className={
                               "rounded-full text-xs font-bold px-2 py-1" + color
@@ -215,6 +285,7 @@ const FeatureReport = () => {
                         </td>
                         <td className="px-4 py-2 text-gray-800 dark:text-gray-200"></td>
                         <td className="px-4 py-2 text-gray-800 dark:text-gray-200"></td>
+                        <td className="px-4 py-2"></td>
                       </tr>
                       {expandedGroups.has(group) &&
                         Object.entries(values).map(([subKey, data]) => (
@@ -226,22 +297,15 @@ const FeatureReport = () => {
                               <a
                                 href={data.url}
                                 target="_blank"
-                                className={
-                                  "flex items-center " + highlightClass(2)
-                                }
+                                className="flex items-center"
                                 rel="noopener noreferrer"
                               >
                                 {subKey}
                                 <FiExternalLink className="ml-2" />
                               </a>
                             </td>
-                            <td className="px-4 py-2 text-gray-800 dark:text-gray-200">
-                              {/* <span className={`rounded-full text-xs font-bold px-2 py-1 ${data.count === "0" ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200' : 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'}`}>
-                                                            {data.count === "0" ? 'Good' : 'Action Needed'}
-                                                        </span> */}
-                            </td>
+                            <td className="px-4 py-2 text-gray-800 dark:text-gray-200"></td>
                             <td className="text-center">
-                              {" "}
                               <span
                                 style={{ marginRight: "4rem" }}
                                 className={
@@ -252,7 +316,7 @@ const FeatureReport = () => {
                                 }
                               >
                                 {data.count}
-                              </span>{" "}
+                              </span>
                             </td>
                             <td className="px-4 py-2 text-gray-800 dark:text-gray-200 text-center">
                               <span
@@ -265,9 +329,14 @@ const FeatureReport = () => {
                                     : "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200")
                                 }
                               >
-                                {" "}
                                 {data.pastCount ? data.pastCount : "-"}
                               </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <TrendBadge
+                                count={data.count}
+                                pastCount={data.pastCount}
+                              />
                             </td>
                           </tr>
                         ))}
